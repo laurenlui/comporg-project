@@ -9,7 +9,8 @@ using namespace std;
 
 void printMipsLine(string output[10][16], int lineNum);
 bool differentStage(string output[10][16], int col);
-int dependentLine(string usedRegisters[10][3], int instructionLine, int instructionNum);
+int dependentLine(string mipsCode[10][4], int instructionLine, int instructionNum);
+int calcRegVal(string mipsCode[10][4], map<string,int> registers, int instructionLine);
 
 int main( int argc, char * argv[] ) {
 	// Error checking
@@ -48,7 +49,6 @@ int main( int argc, char * argv[] ) {
 
 	// Initialize Variables
 	int i, j, k, l, m, tempInt, dependent, counter;
-	int regCount = 0;
 	int instructionNum = 0;
 	int nopIndex = 0;
 	bool nopAdded = false;
@@ -61,7 +61,8 @@ int main( int argc, char * argv[] ) {
 		{"$t5", 0}, {"$t6", 0}, {"$t7", 0}, {"$t8", 0}, {"$t9", 0} };
 
 
-	string mipsCode[10];
+	string mipsLine[10];
+	string mipsCode[10][4];
 	string output[10][16];
 	string nop[20][16];
 
@@ -69,7 +70,6 @@ int main( int argc, char * argv[] ) {
 	bool loadComplete[10] = {};
 	int stageNums[10] = { 0 };
 	string tempStr;
-	string usedRegisters[10][3];
 
 	// Initialize Arrays
 	for (int i = 0; i < 10; i++) {
@@ -86,24 +86,32 @@ int main( int argc, char * argv[] ) {
 
 	i = 0;
 	while (getline(input, line)) {
-		mipsCode[i] = line;
+		mipsLine[i] = line;
 		instructionNum++;
 		i++;
 	}
 
-	// Find used registers
+	// save mips code as an array of strings
 	for (int i = 0; i < instructionNum; i++) {
-		regCount = 0;
 		j = 0;
-		while (mipsCode[i][j] != '\0') {
-			if (mipsCode[i][j] == '$') {
-				tempInt = mipsCode[i].find(",", j);
-				tempStr = mipsCode[i].substr(j, tempInt - j);
-				usedRegisters[i][regCount] = tempStr;
-				regCount++;
-			}
-			j++;
-		}
+		tempInt = mipsLine[i].find(" ");
+		tempStr = mipsLine[i].substr(j,tempInt);
+		mipsCode[i][0] = tempStr;
+		j = tempInt + 1;
+
+		tempInt = mipsLine[i].find(",", j);
+		tempStr = mipsLine[i].substr(j, tempInt - j);
+		mipsCode[i][1] = tempStr;
+		j = tempInt + 1;
+
+		tempInt = mipsLine[i].find(",", j);
+		tempStr = mipsLine[i].substr(j, tempInt - j);
+		mipsCode[i][2] = tempStr;
+		j = tempInt + 1;
+
+		tempInt = mipsLine[i].length();
+		tempStr = mipsLine[i].substr(j, tempInt - j);
+		mipsCode[i][3] = tempStr;
 	}
 
 	// Loop through each cycle in mips pipeline (max 16 cycles)
@@ -116,6 +124,7 @@ int main( int argc, char * argv[] ) {
   		// Loop through each instruction
   		for (j = 0; j < instructionNum; j++) {
   			if (j == 0 || (i > j - 1 && j == 1) || (i > j - 1 && stageNums[j-1] >= 1)) {
+  				// Forwarding
   				if (forwarding) {
   					if (stageNums[j] == 2) {
   						loadComplete[j] = true;
@@ -132,7 +141,12 @@ int main( int argc, char * argv[] ) {
 				else {
 					output[j][i] = ".";
 				}
-				dependent = dependentLine(usedRegisters, j, instructionNum);
+				if (stageNums[j] == 4) {
+					cout << calcRegVal(mipsCode, registers, j) << endl;
+					registers[mipsCode[j][1]] = calcRegVal(mipsCode, registers, j);
+				}
+				// Decides what to print for each line
+				dependent = dependentLine(mipsCode, j, instructionNum);
 				if (differentStage(output, i)) {
 					if (stageNums[j] == 1) {
 						if (dependent == -1 || loadComplete[dependent]) {
@@ -154,7 +168,7 @@ int main( int argc, char * argv[] ) {
 						output[j][i] = ".";
 					}
 				}
-
+				// Decides what the nop lines will print like (if they're used)
 				if (numNops[j] > 0) {
 					m = 0;
 					for (int k = 0; k < j; k++) {
@@ -179,8 +193,8 @@ int main( int argc, char * argv[] ) {
 						m++;
 					}
 				}
-
-				cout << left << setw(20) << mipsCode[j];
+				// prints mips instruction and output line
+				cout << left << setw(20) << mipsLine[j];
 				printMipsLine(output, j);
 
 		  		if (nopAdded) {
@@ -193,6 +207,7 @@ int main( int argc, char * argv[] ) {
 		  		nopAdded = false;				
   			}
 		}
+		// At end of cycle, print registers and their values (updated when line reaches WB stage)
 		cout << endl;
 		cout << "$s0 = "  << left << setw(13) << registers["$s0"] << "$s1 = " << left << setw(13) << registers["$s1"];
 		cout << "$s2 = "  << left << setw(13) << registers["$s2"] << "$s3 = " << left << setw(13) << registers["$s3"] << endl;
@@ -208,7 +223,7 @@ int main( int argc, char * argv[] ) {
 	cout << "END OF SIMULATION" << endl;
 }
 
-
+// Prints output line after mips instructions
 void printMipsLine(string output[10][16], int lineNum) {
 	for (int i = 0; i < 16; i++) {
 		cout << left << setw(4) << output[lineNum][i];
@@ -226,20 +241,74 @@ bool differentStage(string output[10][16], int col) {
 	return true;
 }
 
-int dependentLine(string usedRegisters[10][3], int instructionLine, int instructionNum) {
+int dependentLine(string mipsCode[10][4], int instructionLine, int instructionNum) {
 	for (int i = 0; i < instructionNum; i++) {
 		if (instructionLine == i) {
 			break;
 		}
-		for (int j = 1; j < 3; j++) {
-			if (usedRegisters[i][0] == "" || usedRegisters[instructionLine][j] == "") {
+		for (int j = 2; j < 4; j++) {
+			if (mipsCode[i][0] == "" || mipsCode[instructionLine][j] == "") {
 				continue;
 			}
-			string tempStr = usedRegisters[instructionLine][j];
-			if (!tempStr.compare(usedRegisters[i][0])) {
+			string tempStr = mipsCode[instructionLine][j];
+			if (!tempStr.compare(mipsCode[i][0])) {
 				return i;
 			}
 		}
 	}
 	return -1;
+}
+
+// Finds the value of first register in current line
+int calcRegVal(string mipsCode[10][4], map<string,int> registers, int instructionLine) {
+	// use easier variables for everything
+	string instruction = mipsCode[instructionLine][0];
+	string reg1 = mipsCode[instructionLine][1];
+	string reg2 = mipsCode[instructionLine][2];
+	string reg3 = mipsCode[instructionLine][3];
+	int val1, val2, val3;
+	// assign values for val2 and val3
+	if (reg2 == "$zero") {
+		val2 = 0;
+	}
+	else if (isdigit(reg2[0])) {
+		val2 = stoi(reg2);
+	}
+	else {
+		val2 = registers[reg2];
+	}
+	if (reg3 == "$zero") {
+		val3 = 0;
+	}
+	else if (isdigit(reg3[0])) {
+		val3 = stoi(reg3);
+	}
+	else {
+		val3 = registers[reg3];
+	}
+	// depending on instruction, assign val1
+	if (instruction == "add" || instruction == "addi") {
+		val1 = val2 + val3;
+		return val1;
+	}
+	else if (instruction == "and" || instruction == "andi") {		// For and, andi, or, & ori, it's binary stuff
+		val1 = val2 & val3;
+		return val1;
+	}
+	else if (instruction == "or" || instruction == "ori") {
+		val1 = val3 | val3;
+		return val1;
+	}
+	else if (instruction == "slt" || instruction == "slti") {
+		if (val2 < val3) {
+			return 1;
+		}
+		else {
+			return 0;
+		}
+	}
+	else if (instruction == "beq" || instruction == "bne") {
+		return registers[reg1];
+	}
+	return registers[reg1];
 }
