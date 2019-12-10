@@ -59,7 +59,7 @@ int main( int argc, char * argv[] ) {
 		{"$s3", 0}, {"$s4", 0}, {"$s5", 0}, {"$s6", 0}, {"$s7", 0}, 
 		{"$t0", 0}, {"$t1", 0}, {"$t2", 0}, {"$t3", 0}, {"$t4", 0}, 
 		{"$t5", 0}, {"$t6", 0}, {"$t7", 0}, {"$t8", 0}, {"$t9", 0} };
-	map < string, int > branch;
+    map < string, int > branch;
 
 	string mipsLine[10];
 	string mipsCode[10][4];
