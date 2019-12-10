@@ -1,0 +1,1 @@
+/usr/bin/c++.exe -g  -Wl,--enable-auto-import CMakeFiles/comporg-project.dir/p1.cpp.o  -o comporg-project.exe -Wl,--out-implib,libcomporg-project.dll.a -Wl,--major-image-version,0,--minor-image-version,0 

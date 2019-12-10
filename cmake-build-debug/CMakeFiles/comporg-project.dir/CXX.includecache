@@ -1,0 +1,24 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/cygdrive/c/Users/citri/comporg-project/p1.cpp
+fstream
+-
+string
+-
+iostream
+-
+iomanip
+-
+vector
+-
+map
+-
+utility
+-
+
