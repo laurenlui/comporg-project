@@ -59,7 +59,7 @@ int main( int argc, char * argv[] ) {
 		{"$s3", 0}, {"$s4", 0}, {"$s5", 0}, {"$s6", 0}, {"$s7", 0}, 
 		{"$t0", 0}, {"$t1", 0}, {"$t2", 0}, {"$t3", 0}, {"$t4", 0}, 
 		{"$t5", 0}, {"$t6", 0}, {"$t7", 0}, {"$t8", 0}, {"$t9", 0} };
-    map < string, int > branch;
+	map < string, int > branch;
 
 	string mipsLine[10];
 	string mipsCode[10][4];
@@ -85,21 +85,19 @@ int main( int argc, char * argv[] ) {
 	}
 
 	i = 0;
-	while (getline(input, line)) {
-        while (getline(input, line)) {
-            size_t found = line.find("\r");
-            line.erase(found, 1);
+    while (getline(input, line)) {
+        size_t found = line.find("\r");
+        line.erase(found, 1);
 
-            size_t findBranch = line.find(":");
-            if (findBranch < 128) {
-                branch.insert(pair< string, int >(line, i));
-            } else {
-                mipsLine[i] = line;
-                instructionNum++;
-                i++;
-            }
+        size_t findBranch = line.find(":");
+        if (findBranch < 128) {
+            branch.insert(pair< string, int >(line, i));
+        } else {
+            mipsLine[i] = line;
+            instructionNum++;
+            i++;
         }
-	}
+    }
 
 	// save mips code as an array of strings
 	for (int i = 0; i < instructionNum; i++) {
