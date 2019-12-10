@@ -142,7 +142,6 @@ int main( int argc, char * argv[] ) {
 					output[j][i] = ".";
 				}
 				if (stageNums[j] == 4) {
-					cout << calcRegVal(mipsCode, registers, j) << endl;
 					registers[mipsCode[j][1]] = calcRegVal(mipsCode, registers, j);
 				}
 				// Decides what to print for each line
@@ -251,7 +250,7 @@ int dependentLine(string mipsCode[10][4], int instructionLine, int instructionNu
 				continue;
 			}
 			string tempStr = mipsCode[instructionLine][j];
-			if (!tempStr.compare(mipsCode[i][0])) {
+			if (!tempStr.compare(mipsCode[i][1])) {
 				return i;
 			}
 		}
