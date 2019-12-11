@@ -175,12 +175,11 @@ int main( int argc, char * argv[] ) {
                 }
                 if (stageNums[j] == 3) {
                     int jumpTo = 0;
-
-                    if (mipsCode[j][0] == "beq" && calcRegVal(mipsCode, registers, currentInstr) == 0) {
+                    if (mipsCode[currentInstr][0] == "beq" && calcRegVal(mipsCode, registers, currentInstr) == 0) {
                         looped = true;
                         jumpTo = branch[mipsCode[currentInstr][3]];
                         cycleInstr.push_back(jumpTo);
-                    } else if (mipsCode[j][0] == "bne" && calcRegVal(mipsCode, registers, currentInstr) == 1) {
+                    } else if (mipsCode[currentInstr][0] == "bne" && calcRegVal(mipsCode, registers, currentInstr) == 1) {
                         looped = true;
                         jumpTo = branch[mipsCode[currentInstr][3]];
                         cycleInstr.push_back(jumpTo);
@@ -206,21 +205,6 @@ int main( int argc, char * argv[] ) {
                         if (afterBranch[j] == 0)
                             registers[mipsCode[currentInstr][1]] = calcRegVal(mipsCode, registers, currentInstr);
                     }
-                    /*if (instr != "bne" && instr != "beq") {
-                        registers[mipsCode[currentInstr][1]] = calcRegVal(mipsCode, registers, currentInstr);
-                    }
-                    else {
-                        if (mipsCode[currentInstr][0] == "beq" && calcRegVal(mipsCode, registers, currentInstr) == 0) {
-                            afterBranch[j+1] = 3;
-                            afterBranch[j+2] = 4;
-                            afterBranch[j+3] = 5;
-                        }
-                        else if (mipsCode[currentInstr][0] == "bne" && calcRegVal(mipsCode, registers, currentInstr) == 1) {
-                            afterBranch[j+1] = 3;
-                            afterBranch[j+2] = 4;
-                            afterBranch[j+3] = 5;
-                        }
-                    } */
                 }
                 // Decides what to print for each line
                 if (afterBranch[j] > 1) {
