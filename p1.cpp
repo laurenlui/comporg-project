@@ -50,7 +50,6 @@ int main( int argc, char * argv[] ) {
     // Initialize Variables
     int i, j, k, l, m, tempInt, dependent, counter;
     int instructionNum = 0;
-    int lineCount = 0;
     int nopIndex = 0;
     bool nopAdded = false;
     string line;
