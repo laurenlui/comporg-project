@@ -50,11 +50,11 @@ int main( int argc, char * argv[] ) {
     // Initialize Variables
     int i, j, k, l, m, tempInt, dependent, counter;
     int instructionNum = 0;
+    int lineCount = 0;
     int nopIndex = 0;
     bool nopAdded = false;
     string line;
-    int afterBranch[16];
-    int lineCount = 0;
+    int afterBranch[19];
 
     string stages[5] = {"IF", "ID", "EX", "MEM", "WB"};
     map < string, int > registers = { {"$s0", 0}, {"$s1", 0}, {"$s2", 0},
@@ -67,6 +67,8 @@ int main( int argc, char * argv[] ) {
     string mipsCode[10][4];
     string output[16][16];
     string nop[20][16];
+    vector<int> cycleInstr;
+
 
     int numNops[16] = {};
     bool loadComplete[16] = {};
@@ -86,17 +88,20 @@ int main( int argc, char * argv[] ) {
         }
     }
 
-    for (int i = 0; i < 16; i++) {
+    for (int i = 0; i < 19; i++) {
         afterBranch[i] = 0;
     }
 
     i = 0;
     while (getline(input, line)) {
         size_t found = line.find("\r");
-        line.erase(found, 1);
+        if (found < 128) {
+            line.erase(found, 1);
+        }
 
         size_t findBranch = line.find(":");
         if (findBranch < 128) {
+            line.erase(findBranch, 1);
             branch.insert(pair< string, int >(line, i));
         } else {
             mipsLine[i] = line;
@@ -128,15 +133,28 @@ int main( int argc, char * argv[] ) {
         mipsCode[i][3] = tempStr;
     }
 
+    int currentInstr = 0;
+    bool looped = false;
     // Loop through each cycle in mips pipeline (max 16 cycles)
+    if ((int)(cycleInstr.size()) == 0) {
+        cycleInstr.push_back(currentInstr);
+    }
     for (i = 0; i < 16; i++) {
         // Check if last mips instruction is finished
-        if (output[instructionNum-1][i-1] == "WB") {
+        if (output[(int)(cycleInstr.size())-1][i-1] == "WB") {
             break;
         }
+
         cout << "CPU Cycles ===>     1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  16" << endl;
         // Loop through each instruction
-        for (j = 0, lineCount = 0; j < instructionNum; j++, lineCount++) {
+        int cycleSize = (int)(cycleInstr.size());
+        for (j = 0; j < cycleSize; j++) {
+            //error check
+            currentInstr = cycleInstr[j];
+            if (currentInstr >= instructionNum) {
+                break;
+            }
+
             if (j == 0 || (i > j - 1 && j == 1) || (i > j - 1 && stageNums[j-1] >= 1)) {
                 // Forwarding
                 if (forwarding) {
@@ -155,28 +173,36 @@ int main( int argc, char * argv[] ) {
                 else {
                     output[j][i] = ".";
                 }
+                if (stageNums[j] == 3) {
+                    int jumpTo = 0;
+
+                    if (mipsCode[j][0] == "beq" && calcRegVal(mipsCode, registers, currentInstr) == 0) {
+                        looped = true;
+                        jumpTo = branch[mipsCode[currentInstr][3]];
+                        cycleInstr.push_back(jumpTo);
+                    } else if (mipsCode[j][0] == "bne" && calcRegVal(mipsCode, registers, currentInstr) == 1) {
+                        looped = true;
+                        jumpTo = branch[mipsCode[currentInstr][3]];
+                        cycleInstr.push_back(jumpTo);
+                    } else {
+                        looped = false;
+                    }
+                }
                 if (stageNums[j] == 4) {
-                    string instr = mipsCode[lineCount][0];
+                    string instr = mipsCode[currentInstr][0];
                     if (instr != "bne" && instr != "beq") {
-                        registers[mipsCode[lineCount][1]] = calcRegVal(mipsCode, registers, lineCount);
+                        registers[mipsCode[currentInstr][1]] = calcRegVal(mipsCode, registers, currentInstr);
                     }
                     else {
-                        int jumpTo = lineCount;
-                        if (mipsCode[lineCount][0] == "beq" && calcRegVal(mipsCode, registers, lineCount) == 0) {
+                        if (mipsCode[currentInstr][0] == "beq" && calcRegVal(mipsCode, registers, currentInstr) == 0) {
                             afterBranch[j+1] = 3;
                             afterBranch[j+2] = 4;
                             afterBranch[j+3] = 5;
-
-                            jumpTo = branch[mipsCode[lineCount][4]];
-                            lineCount = jumpTo;
                         }
-                        else if (mipsCode[lineCount][0] == "bne" && calcRegVal(mipsCode, registers, lineCount) == 1) {
+                        else if (mipsCode[currentInstr][0] == "bne" && calcRegVal(mipsCode, registers, currentInstr) == 1) {
                             afterBranch[j+1] = 3;
                             afterBranch[j+2] = 4;
                             afterBranch[j+3] = 5;
-
-                            jumpTo = branch[mipsCode[lineCount][4]];
-                            lineCount = jumpTo;
                         }
                     }
                 }
@@ -184,62 +210,62 @@ int main( int argc, char * argv[] ) {
                 if (afterBranch[j] > 1) {
                     output[j][i] = "*";
                     afterBranch[j]--;
+                    stageNums[j]++;
                 }
                 else if (afterBranch[j] == 1) {
                     output[j][i] = ".";
+                    stageNums[j]++;
                 }
                 else {
-                    dependent = dependentLine(mipsCode, j, instructionNum);
+                    dependent = dependentLine(mipsCode, currentInstr, instructionNum);
                     if (differentStage(output, i)) {
                         if (stageNums[j] == 1) {
                             if (dependent == -1 || loadComplete[dependent]) {
                                 stageNums[j]++;
-                            }
-                            else {
+                            } else {
                                 nopAdded = true;
                             }
-                        }
-                        else {
+                        } else {
                             stageNums[j]++;
                         }
-                    }
-                    else {
+                    } else {
                         if (stageNums[j] > 0 && stageNums[j] < 5) {
                             output[j][i] = stages[stageNums[j] - 1];
-                        }
-                        else {
+                        } else {
                             output[j][i] = ".";
                         }
                     }
-                    // Decides what the nop lines will print like (if they're used)
-                    if (numNops[j] > 0) {
-                        m = 0;
-                        for (int k = 0; k < j; k++) {
-                            m += numNops[k];
+
+                }
+
+                // Decides what the nop lines will print like (if they're used)
+                if (numNops[j] > 0) {
+                    m = 0;
+                    for (int k = 0; k < j; k++) {
+                        m += numNops[k];
+                    }
+                    for (int k = 0; k < numNops[j]; k++) {
+                        counter = 0;
+                        cout << left << setw(20) << "nop";
+                        for (int l = 0; l < i; l++) {
+                            if (nop[m][l] == "*") {
+                                counter++;
+                            }
+                            cout << left << setw(4) << nop[m][l];
                         }
-                        for (int k = 0; k < numNops[j]; k++) {
-                            counter = 0;
-                            cout << left << setw(20) << "nop";
-                            for (int l = 0; l < i; l++) {
-                                if (nop[m][l] == "*") {
-                                    counter++;
-                                }
-                                cout << left << setw(4) << nop[m][l];
-                            }
-                            if (counter < 3) {
-                                nop[m][i] = "*";
-                            }
-                            for (l = i; l < 16; l++) {
-                                cout << left << setw(4) << nop[m][l];
-                            }
-                            cout << endl;
-                            m++;
+                        if (counter < 3) {
+                            nop[m][i] = "*";
                         }
+                        for (l = i; l < 16; l++) {
+                            cout << left << setw(4) << nop[m][l];
+                        }
+                        cout << endl;
+                        m++;
                     }
                 }
 
                 // prints mips instruction and output line
-                cout << left << setw(20) << mipsLine[j];
+                cout << left << setw(20) << mipsLine[currentInstr];
                 printMipsLine(output, j);
 
                 if (nopAdded) {
@@ -250,6 +276,10 @@ int main( int argc, char * argv[] ) {
                     numNops[j]++;
                 }
                 nopAdded = false;
+            }
+            if (j == (int)(cycleInstr.size() - 1) && !looped) {
+                currentInstr++;
+                cycleInstr.push_back(currentInstr);
             }
         }
         // At end of cycle, print registers and their values (updated when line reaches WB stage)
@@ -269,17 +299,17 @@ int main( int argc, char * argv[] ) {
 }
 
 // Prints output line after mips instructions
-void printMipsLine(string output[10][16], int lineNum) {
+void printMipsLine(string output[16][16], int lineNum) {
     for (int i = 0; i < 16; i++) {
         cout << left << setw(4) << output[lineNum][i];
     }
     cout << endl;
 }
 
-bool differentStage(string output[10][16], int col) {
-    for (int i = 0; i < 9; i++) {
+bool differentStage(string output[16][16], int col) {
+    for (int i = 0; i < 15; i++) {
         string tempStr = output[i+1][col];
-        if (!tempStr.compare(output[i][col]) && tempStr.compare(".")) {
+        if (!tempStr.compare(output[i][col]) && tempStr.compare(".") && tempStr.compare("*")) {
             return false;
         }
     }
