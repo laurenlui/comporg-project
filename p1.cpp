@@ -7,9 +7,9 @@
 #include <utility>
 using namespace std;
 
-void printMipsLine(string output[10][16], int lineNum);
-bool differentStage(string output[10][16], int col);
-int dependentLine(string mipsCode[10][4], int instructionLine, int instructionNum);
+void printMipsLine(string output[16][16], int lineNum);
+bool differentStage(string output[16][16], int col);
+int dependentLine(string mipsCode[10][4], int instructionLine, int instructionNum, int regPos);
 int calcRegVal(string mipsCode[10][4], map<string,int> registers, int instructionLine);
 
 int main( int argc, char * argv[] ) {
@@ -48,10 +48,10 @@ int main( int argc, char * argv[] ) {
     cout << "----------------------------------------------------------------------------------" << endl;
 
     // Initialize Variables
-    int i, j, k, l, m, tempInt, dependent, counter;
+    int i, j, k, l, m, tempInt, dependent, dependent2, counter;
     int instructionNum = 0;
     int nopIndex = 0;
-    bool nopAdded = false;
+    int nopAdded = 0;
     string line;
     int afterBranch[19];
 
@@ -215,13 +215,22 @@ int main( int argc, char * argv[] ) {
                     stageNums[j]++;
                 }
                 else {
-                    dependent = dependentLine(mipsCode, currentInstr, instructionNum);
+                    dependent = dependentLine(mipsCode, currentInstr, instructionNum, 2);
+                    dependent2 = dependentLine(mipsCode, currentInstr, instructionNum, 3);
+                    bool alreadyNop = false;
                     if (differentStage(output, i)) {
                         if (stageNums[j] == 1) {
-                            if (dependent == -1 || loadComplete[dependent]) {
+                            if ((dependent == -1 || loadComplete[dependent]) && (dependent2 == -1 || loadComplete[dependent2])) {
                                 stageNums[j]++;
-                            } else {
-                                nopAdded = true;
+                            }
+                            if (dependent != -1 && !loadComplete[dependent]){
+                            	alreadyNop = true;
+                                nopAdded++;
+                            }  
+                            if (dependent2 != -1 && !loadComplete[dependent2]) {
+                            	if (!alreadyNop) {
+                            		nopAdded++;
+                            	}
                             }
                         } else {
                             stageNums[j]++;
@@ -254,10 +263,10 @@ int main( int argc, char * argv[] ) {
                         if (counter < 3) {
                             nop[m][i] = "*";
                         }
-                        for (l = i; l < 16; l++) {
+                        for (l = i; l < 15; l++) {
                             cout << left << setw(4) << nop[m][l];
                         }
-                        cout << endl;
+                        cout << nop[m][l] << endl;
                         m++;
                     }
                 }
@@ -266,14 +275,17 @@ int main( int argc, char * argv[] ) {
                 cout << left << setw(20) << mipsLine[currentInstr];
                 printMipsLine(output, j);
 
-                if (nopAdded) {
-                    for (k = 0; k < 16; k++) {
-                        nop[nopIndex][k] = output[j][k];
-                    }
-                    nopIndex++;
-                    numNops[j]++;
+                if (nopAdded > 0) {
+                	while (nopAdded > 0) {
+                		for (k = 0; k < 16; k++) {
+	                        nop[nopIndex][k] = output[j][k];
+	                    }
+	                    nopIndex++;
+	                    numNops[j]++;
+	                    nopAdded--;
+                	}
                 }
-                nopAdded = false;
+                nopAdded = 0;
             }
             if (j == (int)(cycleInstr.size() - 1) && !looped) {
                 currentInstr++;
@@ -282,15 +294,15 @@ int main( int argc, char * argv[] ) {
         }
         // At end of cycle, print registers and their values (updated when line reaches WB stage)
         cout << endl;
-        cout << "$s0 = "  << left << setw(13) << registers["$s0"] << "$s1 = " << left << setw(13) << registers["$s1"];
-        cout << "$s2 = "  << left << setw(13) << registers["$s2"] << "$s3 = " << left << setw(13) << registers["$s3"] << endl;
-        cout << "$s4 = "  << left << setw(13) << registers["$s4"] << "$s5 = " << left << setw(13) << registers["$s5"];
-        cout << "$s6 = "  << left << setw(13) << registers["$s6"] << "$s7 = " << left << setw(13) << registers["$s7"] << endl;
-        cout << "$t0 = "  << left << setw(13) << registers["$t0"] << "$t1 = " << left << setw(13) << registers["$t1"];
-        cout << "$t2 = "  << left << setw(13) << registers["$t2"] << "$t3 = " << left << setw(13) << registers["$t3"] << endl;
-        cout << "$t4 = "  << left << setw(13) << registers["$t4"] << "$t5 = " << left << setw(13) << registers["$t5"];
-        cout << "$t6 = "  << left << setw(13) << registers["$t6"] << "$t7 = " << left << setw(13) << registers["$t7"] << endl;
-        cout << "$t8 = "  << left << setw(13) << registers["$t8"] << "$t9 = " << left << setw(13) << registers["$t9"] << endl;
+        cout << "$s0 = "  << left << setw(14) << registers["$s0"] << "$s1 = " << left << setw(14) << registers["$s1"];
+        cout << "$s2 = "  << left << setw(14) << registers["$s2"] << "$s3 = " << registers["$s3"] << endl;
+        cout << "$s4 = "  << left << setw(14) << registers["$s4"] << "$s5 = " << left << setw(14) << registers["$s5"];
+        cout << "$s6 = "  << left << setw(14) << registers["$s6"] << "$s7 = " << registers["$s7"] << endl;
+        cout << "$t0 = "  << left << setw(14) << registers["$t0"] << "$t1 = " << left << setw(14) << registers["$t1"];
+        cout << "$t2 = "  << left << setw(14) << registers["$t2"] << "$t3 = " << registers["$t3"] << endl;
+        cout << "$t4 = "  << left << setw(14) << registers["$t4"] << "$t5 = " << left << setw(14) << registers["$t5"];
+        cout << "$t6 = "  << left << setw(14) << registers["$t6"] << "$t7 = " << registers["$t7"] << endl;
+        cout << "$t8 = "  << left << setw(14) << registers["$t8"] << "$t9 = " << registers["$t9"] << endl;
         cout << "----------------------------------------------------------------------------------" << endl;
     }
     cout << "END OF SIMULATION" << endl;
@@ -298,10 +310,10 @@ int main( int argc, char * argv[] ) {
 
 // Prints output line after mips instructions
 void printMipsLine(string output[16][16], int lineNum) {
-    for (int i = 0; i < 16; i++) {
+    for (int i = 0; i < 15; i++) {
         cout << left << setw(4) << output[lineNum][i];
     }
-    cout << endl;
+    cout << output[lineNum][15] << endl;
 }
 
 bool differentStage(string output[16][16], int col) {
@@ -314,19 +326,14 @@ bool differentStage(string output[16][16], int col) {
     return true;
 }
 
-int dependentLine(string mipsCode[10][4], int instructionLine, int instructionNum) {
-    for (int i = 0; i < instructionNum; i++) {
-        if (instructionLine == i) {
+int dependentLine(string mipsCode[10][4], int instructionLine, int instructionNum, int regPos) {
+    for (int i = instructionLine-1; i >= 0; i--) {
+        if (instructionLine == 0) {
             break;
         }
-        for (int j = 2; j < 4; j++) {
-            if (mipsCode[i][0] == "" || mipsCode[instructionLine][j] == "") {
-                continue;
-            }
-            string tempStr = mipsCode[instructionLine][j];
-            if (!tempStr.compare(mipsCode[i][1])) {
-                return i;
-            }
+        string tempStr = mipsCode[instructionLine][regPos];
+        if (!tempStr.compare(mipsCode[i][1])) {
+            return i;
         }
     }
     return -1;
