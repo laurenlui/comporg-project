@@ -140,7 +140,7 @@ int main( int argc, char * argv[] ) {
     }
     for (i = 0; i < 16; i++) {
         // Check if last mips instruction is finished
-        if (output[(int)(cycleInstr.size())-1][i-1] == "WB") {
+        if (output[(int)(cycleInstr.size())-2][i-1] == "WB") {
             break;
         }
 
@@ -148,7 +148,6 @@ int main( int argc, char * argv[] ) {
         // Loop through each instruction
         int cycleSize = (int)(cycleInstr.size());
         for (j = 0; j < cycleSize; j++) {
-            //error check
             currentInstr = cycleInstr[j];
             if (currentInstr >= instructionNum) {
                 break;
