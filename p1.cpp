@@ -190,7 +190,23 @@ int main( int argc, char * argv[] ) {
                 }
                 if (stageNums[j] == 4) {
                     string instr = mipsCode[currentInstr][0];
-                    if (instr != "bne" && instr != "beq") {
+                    if (instr == "bne" || instr == "beq") {
+                        if (mipsCode[currentInstr][0] == "beq" && calcRegVal(mipsCode, registers, currentInstr) == 0) {
+                            afterBranch[j+1] = 3;
+                            afterBranch[j+2] = 4;
+                            afterBranch[j+3] = 5;
+                        }
+                        else if (mipsCode[currentInstr][0] == "bne" && calcRegVal(mipsCode, registers, currentInstr) == 1) {
+                            afterBranch[j+1] = 3;
+                            afterBranch[j+2] = 4;
+                            afterBranch[j+3] = 5;
+                        }
+                    }
+                    else {
+                        if (afterBranch[j] == 0)
+                            registers[mipsCode[currentInstr][1]] = calcRegVal(mipsCode, registers, currentInstr);
+                    }
+                    /*if (instr != "bne" && instr != "beq") {
                         registers[mipsCode[currentInstr][1]] = calcRegVal(mipsCode, registers, currentInstr);
                     }
                     else {
@@ -204,7 +220,7 @@ int main( int argc, char * argv[] ) {
                             afterBranch[j+2] = 4;
                             afterBranch[j+3] = 5;
                         }
-                    }
+                    } */
                 }
                 // Decides what to print for each line
                 if (afterBranch[j] > 1) {
